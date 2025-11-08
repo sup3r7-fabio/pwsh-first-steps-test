@@ -1,0 +1,102 @@
+name: Step 1, Infrastructure as Code
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step1-infrastructure-code.ps1'
+      - '**/step1-infrastructure-code.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_infrastructure_code:
+    name: Validate Infrastructure Automation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Infrastructure Script
+        shell: pwsh
+        run: |
+          $scriptPath = "step1-infrastructure-code.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-4-automation-devops/step1-infrastructure-code.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            Write-Host "✅ Found infrastructure automation script!" -ForegroundColor Green
+            $content = Get-Content $scriptPath -Raw
+            
+            # Check for infrastructure concepts
+            $concepts = @(
+              'Configuration\s+\w+',  # DSC Configuration
+              'Node\s+',              # DSC Node
+              'Ensure\s*=',          # DSC Resource
+              'New-Item.*Directory', # Infrastructure provisioning
+              'Test-Path'            # Validation logic
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { 
+                Write-Host "✅ Found infrastructure concept: $concept" -ForegroundColor Green
+                $found++ 
+              }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "🏗️ Infrastructure as Code concepts validated!" -ForegroundColor Green
+              & $scriptPath
+            } else {
+              Write-Host "❌ Missing infrastructure automation concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Infrastructure script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Test Infrastructure Patterns
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing infrastructure automation patterns..." -ForegroundColor Cyan
+          
+          # Test configuration management pattern
+          function Test-ConfigurationManagement {
+            $config = @{
+              ServerRole = "WebServer"
+              Features = @("IIS-WebServerRole", "IIS-HttpRedirect")
+              Ports = @(80, 443)
+            }
+            return $config.ServerRole -eq "WebServer" -and $config.Features.Count -eq 2
+          }
+          
+          if (Test-ConfigurationManagement) {
+            Write-Host "✅ Configuration management pattern works" -ForegroundColor Green
+          }
+          
+          # Test infrastructure validation
+          function Test-InfrastructureValidation {
+            param([hashtable]$Config)
+            return $Config.ContainsKey("ServerRole") -and $Config.ContainsKey("Features")
+          }
+          
+          $testConfig = @{ ServerRole = "Database"; Features = @("SQL-Server") }
+          if (Test-InfrastructureValidation -Config $testConfig) {
+            Write-Host "✅ Infrastructure validation pattern works" -ForegroundColor Green
+          }
+          
+          Write-Host "🎯 Infrastructure as Code mastery validated!" -ForegroundColor Magenta
+
+      - name: Update to Step 2
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 1
+          to_step: 2

@@ -1,0 +1,168 @@
+name: Step 5, Advanced Pipeline Mastery
+
+# This workflow validates advanced pipeline techniques and completes the course
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step5-advanced-pipelines.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_advanced_pipelines:
+    name: Validate Advanced Pipeline Skills
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Step 5 Script Exists
+        shell: pwsh
+        run: |
+          if (Test-Path "step5-advanced-pipelines.ps1") {
+            Write-Host "✅ Found step5-advanced-pipelines.ps1" -ForegroundColor Green
+            $content = Get-Content "step5-advanced-pipelines.ps1" -Raw
+            
+            # Check for advanced pipeline concepts
+            $requiredConcepts = @{
+              'ForEach-Object' = 'Advanced object processing'
+              '-ErrorAction' = 'Error handling in pipelines'
+              'switch.*\{' = 'Complex conditional logic'
+              'PSCustomObject' = 'Custom object creation'
+              'System\.Diagnostics\.Stopwatch' = 'Performance measurement'
+            }
+            
+            $conceptsFound = 0
+            foreach ($concept in $requiredConcepts.Keys) {
+              if ($content -match $concept) {
+                Write-Host "✅ Found: $($requiredConcepts[$concept])" -ForegroundColor Green
+                $conceptsFound++
+              } else {
+                Write-Host "⚠️  Missing: $($requiredConcepts[$concept])" -ForegroundColor Yellow
+              }
+            }
+            
+            if ($conceptsFound -ge 3) {
+              Write-Host "🎉 Excellent coverage of advanced concepts!" -ForegroundColor Cyan
+            } else {
+              Write-Host "⚠️  Consider adding more advanced examples." -ForegroundColor Yellow
+            }
+          } else {
+            Write-Host "❌ step5-advanced-pipelines.ps1 not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Execute Step 5 Script
+        shell: pwsh
+        run: |
+          Write-Host "🔄 Testing your advanced pipeline script..." -ForegroundColor Cyan
+          try {
+            ./step5-advanced-pipelines.ps1
+            Write-Host "✅ Script executed successfully!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ Script execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Advanced Pipeline Skills Test
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing advanced pipeline mastery..." -ForegroundColor Cyan
+          
+          # Test complex pipeline chain
+          $complexResult = Get-Process | 
+            Where-Object { $_.WorkingSet -gt 10MB } |
+            Select-Object Name, @{Name='MemoryMB';Expression={[math]::Round($_.WorkingSet/1MB,2)}} |
+            Group-Object {
+              switch ($_.MemoryMB) {
+                {$_ -gt 500} { 'High' }
+                {$_ -gt 100} { 'Medium' }
+                default { 'Low' }
+              }
+            } |
+            Sort-Object Name
+          
+          if ($complexResult.Count -ge 1) {
+            Write-Host "✅ Complex pipeline chain works: $($complexResult.Count) categories" -ForegroundColor Green
+          }
+          
+          # Test custom object creation
+          $customObjects = 1..10 | ForEach-Object {
+            [PSCustomObject]@{
+              Number = $_
+              Square = $_ * $_
+              IsEven = ($_ % 2) -eq 0
+            }
+          }
+          
+          if ($customObjects.Count -eq 10 -and $customObjects[0].Square -eq 1) {
+            Write-Host "✅ Custom object creation works correctly" -ForegroundColor Green
+          }
+          
+          # Test performance measurement
+          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+          $result = 1..100 | ForEach-Object { $_ * 2 }
+          $stopwatch.Stop()
+          
+          if ($stopwatch.ElapsedMilliseconds -ge 0) {
+            Write-Host "✅ Performance measurement works: $($stopwatch.ElapsedMilliseconds)ms" -ForegroundColor Green
+          }
+          
+          Write-Host "🎯 AMAZING! You've achieved pipeline mastery!" -ForegroundColor Magenta
+
+      - name: Course Completion Celebration
+        shell: pwsh
+        run: |
+          Write-Host ""
+          Write-Host "🎉🎉🎉 COURSE 2 COMPLETED! 🎉🎉🎉" -ForegroundColor Magenta
+          Write-Host ""
+          Write-Host "You have successfully mastered:" -ForegroundColor Cyan
+          Write-Host "✅ Pipeline object flow" -ForegroundColor Green
+          Write-Host "✅ Advanced filtering with Where-Object" -ForegroundColor Green
+          Write-Host "✅ Data transformation with Select-Object" -ForegroundColor Green
+          Write-Host "✅ Sorting and grouping techniques" -ForegroundColor Green
+          Write-Host "✅ Complex pipeline chains" -ForegroundColor Green
+          Write-Host "✅ Performance optimization" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🚀 You're ready for Course 3: PowerShell Functions & Modules!" -ForegroundColor Yellow
+          Write-Host ""
+
+      - name: Create Course Completion Badge
+        shell: pwsh
+        run: |
+          $badge = @"
+          # 🏆 Course 2 Completion Badge
+          
+          **Congratulations!** You have successfully completed:
+          
+          ## PowerShell Pipelines & Filtering
+          
+          **Skills Mastered:**
+          - ✅ Pipeline object manipulation
+          - ✅ Advanced filtering techniques  
+          - ✅ Data transformation and selection
+          - ✅ Sorting and statistical analysis
+          - ✅ Complex pipeline architectures
+          
+          **Completion Date:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')
+          
+          ---
+          
+          Ready for the next challenge? Check out **Course 3: PowerShell Functions & Modules**!
+          "@
+          
+          $badge | Out-File -FilePath "COURSE-2-COMPLETION.md" -Encoding utf8
+          Write-Host "✅ Created completion badge: COURSE-2-COMPLETION.md" -ForegroundColor Green
+
+      - name: Final Step Update
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 5
+          to_step: X

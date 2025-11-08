@@ -1,0 +1,52 @@
+name: Step 0, Start Course 2
+
+# This workflow starts Course 2: PowerShell Pipelines & Filtering
+# It provides an introduction and sets up the course environment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/0-start.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  start_course:
+    name: Welcome to PowerShell Pipelines & Filtering
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          
+          Write-Host "🔄 Welcome to PowerShell Pipelines & Filtering!" -ForegroundColor Cyan
+          Write-Host ""
+          Write-Host "This course will teach you:" -ForegroundColor Yellow
+          Write-Host "✅ How PowerShell pipelines work with objects" -ForegroundColor Green
+          Write-Host "✅ Filtering data with Where-Object" -ForegroundColor Green  
+          Write-Host "✅ Selecting properties with Select-Object" -ForegroundColor Green
+          Write-Host "✅ Sorting and organizing with Sort-Object" -ForegroundColor Green
+          Write-Host "✅ Advanced pipeline techniques" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "Let's get started! 🚀" -ForegroundColor Magenta
+          
+          # Verify PowerShell version
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)" -ForegroundColor Gray
+
+      - name: Update to Step 1
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 0
+          to_step: 1

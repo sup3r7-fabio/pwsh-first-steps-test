@@ -1,0 +1,101 @@
+name: Step 5, Enterprise Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step5-enterprise-deployment.ps1'
+      - '**/step5-enterprise-deployment.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_enterprise_deployment:
+    name: Validate Enterprise Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Enterprise Script
+        shell: pwsh
+        run: |
+          $scriptPath = "step5-enterprise-deployment.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-4-automation-devops/step5-enterprise-deployment.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            Write-Host "✅ Found enterprise deployment script!" -ForegroundColor Green
+            $content = Get-Content $scriptPath -Raw
+            
+            # Check for enterprise concepts
+            $concepts = @(
+              'Scale|Scalability',           # Scalable architecture
+              'Enterprise|Production',       # Enterprise patterns
+              'Maintenance|Lifecycle',       # Lifecycle management
+              'Documentation|Knowledge',     # Knowledge management
+              'Architecture|Pattern'        # Architecture patterns
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { 
+                Write-Host "✅ Found enterprise concept: $concept" -ForegroundColor Green
+                $found++ 
+              }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "🏢 Enterprise Deployment concepts validated!" -ForegroundColor Green
+              & $scriptPath
+            } else {
+              Write-Host "❌ Missing enterprise concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Enterprise deployment script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Course 4 Completion Celebration
+        shell: pwsh
+        run: |
+          Write-Host "🏆 CONGRATULATIONS - POWERSHELL MASTERY ACHIEVED!" -ForegroundColor Magenta
+          Write-Host "========================================================" -ForegroundColor Gray
+          Write-Host ""
+          Write-Host "🎓 You have completed the COMPLETE PowerShell series:" -ForegroundColor Cyan
+          Write-Host "   ✅ Course 1: PowerShell Fundamentals" -ForegroundColor Green
+          Write-Host "   ✅ Course 2: Pipelines & Data Processing" -ForegroundColor Green  
+          Write-Host "   ✅ Course 3: Functions & Modules" -ForegroundColor Green
+          Write-Host "   ✅ Course 4: Automation & DevOps" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🚀 ENTERPRISE SKILLS MASTERED:" -ForegroundColor Yellow
+          Write-Host "   💼 Infrastructure as Code Development" -ForegroundColor White
+          Write-Host "   🔄 CI/CD Pipeline Engineering" -ForegroundColor White
+          Write-Host "   📊 Production Monitoring & SRE Practices" -ForegroundColor White
+          Write-Host "   🔐 Security & Compliance Automation" -ForegroundColor White
+          Write-Host "   🏗️ Scalable Enterprise Architecture" -ForegroundColor White
+          Write-Host ""
+          Write-Host "🎯 CAREER READY FOR:" -ForegroundColor Magenta
+          Write-Host "   • DevOps Engineer" -ForegroundColor Cyan
+          Write-Host "   • Site Reliability Engineer (SRE)" -ForegroundColor Cyan
+          Write-Host "   • Cloud Automation Architect" -ForegroundColor Cyan
+          Write-Host "   • Infrastructure Engineer" -ForegroundColor Cyan
+          Write-Host "   • PowerShell Developer Expert" -ForegroundColor Cyan
+          Write-Host ""
+          Write-Host "📈 TOTAL LEARNING: 6+ hours of hands-on PowerShell mastery" -ForegroundColor Green
+          Write-Host "🎖️ STATUS: POWERSHELL EXPERT - ENTERPRISE READY" -ForegroundColor Yellow
+          Write-Host ""
+          Write-Host "🎉 Welcome to the PowerShell Masters Club! 🎉" -ForegroundColor Magenta
+
+      - name: Final Achievement Update
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 5
+          to_step: X

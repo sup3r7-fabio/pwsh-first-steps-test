@@ -1,0 +1,110 @@
+name: Step 2, Filtering with Where-Object
+
+# This workflow validates filtering concepts with Where-Object
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step2-filtering.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_filtering:
+    name: Validate Where-Object Filtering
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Step 2 Script Exists
+        shell: pwsh
+        run: |
+          if (Test-Path "step2-filtering.ps1") {
+            Write-Host "✅ Found step2-filtering.ps1" -ForegroundColor Green
+            $content = Get-Content "step2-filtering.ps1" -Raw
+            
+            # Check for filtering concepts
+            $requiredConcepts = @{
+              'Where-Object' = 'Basic filtering command'
+              '\-eq|\-ne|\-lt|\-gt' = 'Comparison operators'
+              '\-like|\-match' = 'Pattern matching'
+              '\-and|\-or' = 'Logical operators'
+              'WorkingSet|Memory' = 'Process filtering'
+            }
+            
+            $conceptsFound = 0
+            foreach ($concept in $requiredConcepts.Keys) {
+              if ($content -match $concept) {
+                Write-Host "✅ Found: $($requiredConcepts[$concept])" -ForegroundColor Green
+                $conceptsFound++
+              } else {
+                Write-Host "⚠️  Missing: $($requiredConcepts[$concept])" -ForegroundColor Yellow
+              }
+            }
+            
+            if ($conceptsFound -ge 3) {
+              Write-Host "🎉 Good coverage of filtering concepts!" -ForegroundColor Cyan
+            } else {
+              Write-Host "⚠️  Consider adding more filtering examples." -ForegroundColor Yellow
+            }
+          } else {
+            Write-Host "❌ step2-filtering.ps1 not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Validate PowerShell Syntax
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Validating PowerShell syntax..." -ForegroundColor Cyan
+          try {
+            $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content "step2-filtering.ps1" -Raw), [ref]$null)
+            Write-Host "✅ PowerShell syntax is valid!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ PowerShell syntax error: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Execute Step 2 Script
+        shell: pwsh
+        run: |
+          Write-Host "🔄 Testing your filtering script..." -ForegroundColor Cyan
+          try {
+            & "./step2-filtering.ps1"
+            Write-Host "✅ Script executed successfully!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ Script execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Filtering Skills Test
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing filtering skills..." -ForegroundColor Cyan
+          
+          # Test basic filtering
+          $lowMemProcesses = Get-Process | Where-Object { $_.WorkingSet -lt 10MB }
+          Write-Host "✅ Found $($lowMemProcesses.Count) low-memory processes" -ForegroundColor Green
+          
+          # Test pattern matching
+          $systemProcesses = Get-Process | Where-Object { $_.Name -like '*system*' }
+          Write-Host "✅ Found $($systemProcesses.Count) system-related processes" -ForegroundColor Green
+          
+          # Test complex filtering
+          $highMemProcesses = Get-Process | Where-Object { $_.WorkingSet -gt 50MB }
+          Write-Host "✅ Found $($highMemProcesses.Count) high-memory processes" -ForegroundColor Green
+          
+          Write-Host "🎯 Excellent! You've mastered filtering with Where-Object." -ForegroundColor Magenta
+
+      - name: Update to Step 3
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 2
+          to_step: 3

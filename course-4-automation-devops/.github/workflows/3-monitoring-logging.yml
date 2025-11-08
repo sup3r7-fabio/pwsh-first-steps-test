@@ -1,0 +1,70 @@
+name: Step 3, Monitoring & Logging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step3-monitoring-logging.ps1'
+      - '**/step3-monitoring-logging.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_monitoring:
+    name: Validate Monitoring & Logging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Monitoring Script
+        shell: pwsh
+        run: |
+          $scriptPath = "step3-monitoring-logging.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-4-automation-devops/step3-monitoring-logging.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            Write-Host "✅ Found monitoring script!" -ForegroundColor Green
+            $content = Get-Content $scriptPath -Raw
+            
+            # Check for monitoring concepts
+            $concepts = @(
+              'Get-Counter|Get-WmiObject', # Performance monitoring
+              'Write-Log|Add-Content',     # Logging functionality
+              'Alert|Notify',              # Alerting system
+              'Metric|Measurement',        # Metrics collection
+              'Dashboard|Report'           # Reporting
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { 
+                Write-Host "✅ Found monitoring concept: $concept" -ForegroundColor Green
+                $found++ 
+              }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "📊 Monitoring & Logging concepts validated!" -ForegroundColor Green
+              & $scriptPath
+            } else {
+              Write-Host "❌ Missing monitoring concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Monitoring script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Update to Step 4
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 3
+          to_step: 4

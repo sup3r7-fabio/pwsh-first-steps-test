@@ -1,0 +1,81 @@
+name: Step 5, Module Distribution
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step5-distribution.ps1'
+      - '**/step5-distribution.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_distribution:
+    name: Validate Module Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Distribution Script
+        shell: pwsh
+        run: |
+          $scriptPath = "step5-distribution.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-3-functions-modules/step5-distribution.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            Write-Host "✅ Found distribution script!" -ForegroundColor Green
+            
+            $content = Get-Content $scriptPath -Raw
+            $concepts = @(
+              'New-ModuleManifest',
+              'Test-ModuleManifest',
+              'Export-ModuleMember',
+              'ModuleVersion'
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { $found++ }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "✅ Distribution concepts found!" -ForegroundColor Green
+              & $scriptPath
+              Write-Host "🎉 Course 3 Complete! You are now a PowerShell function and module expert!" -ForegroundColor Magenta
+            } else {
+              Write-Host "❌ Missing distribution concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Distribution script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Course Completion
+        shell: pwsh
+        run: |
+          Write-Host "🏆 CONGRATULATIONS!" -ForegroundColor Magenta
+          Write-Host "You have successfully completed Course 3: PowerShell Functions & Modules" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🎯 Skills Mastered:" -ForegroundColor Cyan
+          Write-Host "  ✅ PowerShell Function Development" -ForegroundColor Green
+          Write-Host "  ✅ Parameter Validation and Attributes" -ForegroundColor Green
+          Write-Host "  ✅ Advanced Function Features" -ForegroundColor Green
+          Write-Host "  ✅ PowerShell Module Creation" -ForegroundColor Green
+          Write-Host "  ✅ Module Distribution and Best Practices" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🚀 You are ready for enterprise PowerShell development!" -ForegroundColor Yellow
+
+      - name: Final Step Update
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 5
+          to_step: X

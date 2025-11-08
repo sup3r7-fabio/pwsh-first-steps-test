@@ -1,0 +1,70 @@
+name: Step 4, Module Creation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step4-module.psm1'
+      - 'step4-module.psd1'
+      - '**/step4-module.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_module:
+    name: Validate PowerShell Module
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Module Files
+        shell: pwsh
+        run: |
+          $moduleFile = "step4-module.psm1"
+          $manifestFile = "step4-module.psd1"
+          
+          # Check alternative paths
+          if (-not (Test-Path $moduleFile)) {
+            $moduleFile = "course-3-functions-modules/step4-module.psm1"
+            $manifestFile = "course-3-functions-modules/step4-module.psd1"
+          }
+          
+          if ((Test-Path $moduleFile) -and (Test-Path $manifestFile)) {
+            Write-Host "✅ Found module files!" -ForegroundColor Green
+            
+            # Test module manifest
+            try {
+              $manifest = Test-ModuleManifest $manifestFile -ErrorAction Stop
+              Write-Host "✅ Module manifest is valid!" -ForegroundColor Green
+              Write-Host "   Module: $($manifest.Name)" -ForegroundColor Gray
+              Write-Host "   Version: $($manifest.Version)" -ForegroundColor Gray
+            } catch {
+              Write-Host "❌ Module manifest error: $($_.Exception.Message)" -ForegroundColor Red
+              exit 1
+            }
+            
+            # Test module import
+            try {
+              Import-Module $moduleFile -Force
+              Write-Host "✅ Module imported successfully!" -ForegroundColor Green
+            } catch {
+              Write-Host "❌ Module import failed: $($_.Exception.Message)" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Module files not found!" -ForegroundColor Red
+            Write-Host "   Expected: $moduleFile and $manifestFile" -ForegroundColor Yellow
+            exit 1
+          }
+
+      - name: Update to Step 5
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 4
+          to_step: 5

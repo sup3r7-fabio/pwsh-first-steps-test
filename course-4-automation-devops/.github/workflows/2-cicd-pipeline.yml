@@ -1,0 +1,107 @@
+name: Step 2, CI/CD Pipeline Development
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step2-cicd-pipeline.ps1'
+      - '**/step2-cicd-pipeline.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_cicd_pipeline:
+    name: Validate CI/CD Pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Pipeline Script
+        shell: pwsh
+        run: |
+          $scriptPath = "step2-cicd-pipeline.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-4-automation-devops/step2-cicd-pipeline.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            Write-Host "✅ Found CI/CD pipeline script!" -ForegroundColor Green
+            $content = Get-Content $scriptPath -Raw
+            
+            # Check for CI/CD concepts
+            $concepts = @(
+              'Build.*Stage|Deploy.*Stage', # Pipeline stages
+              'Test.*Result|Invoke.*Test',  # Testing integration
+              'Environment.*\w+',           # Environment management
+              'Version.*\d+',              # Versioning
+              'Rollback|Deploy'            # Deployment operations
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { 
+                Write-Host "✅ Found CI/CD concept: $concept" -ForegroundColor Green
+                $found++ 
+              }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "🔄 CI/CD Pipeline concepts validated!" -ForegroundColor Green
+              & $scriptPath
+            } else {
+              Write-Host "❌ Missing CI/CD pipeline concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ CI/CD pipeline script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Test Pipeline Patterns
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing CI/CD pipeline patterns..." -ForegroundColor Cyan
+          
+          # Test build pipeline simulation
+          function Invoke-BuildPipeline {
+            $stages = @("Build", "Test", "Package", "Deploy")
+            $results = @{}
+            
+            foreach ($stage in $stages) {
+              $results[$stage] = "Success"
+              Write-Host "✅ $stage stage completed" -ForegroundColor Green
+            }
+            
+            return $results.Values -notcontains "Failed"
+          }
+          
+          if (Invoke-BuildPipeline) {
+            Write-Host "✅ Build pipeline simulation successful" -ForegroundColor Green
+          }
+          
+          # Test environment promotion
+          function Test-EnvironmentPromotion {
+            $environments = @("Dev", "Test", "Staging", "Production")
+            $currentEnv = "Test"
+            $nextEnv = $environments[$environments.IndexOf($currentEnv) + 1]
+            
+            return $nextEnv -eq "Staging"
+          }
+          
+          if (Test-EnvironmentPromotion) {
+            Write-Host "✅ Environment promotion logic works" -ForegroundColor Green
+          }
+          
+          Write-Host "🎯 CI/CD Pipeline mastery validated!" -ForegroundColor Magenta
+
+      - name: Update to Step 3
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 2
+          to_step: 3

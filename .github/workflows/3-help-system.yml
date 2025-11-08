@@ -1,0 +1,203 @@
+name: Step 3, Help System Demo
+
+# This step triggers when the learner creates the help system demonstration script
+# This step validates the script and moves to step 4
+
+# Reference: https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows  
+on:
+  # We'll run this workflow when:
+  # - Learner pushes changes to main branch with help system script
+  push:
+    branches:
+      - main
+    paths:
+      - 'help-system-demo.ps1'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository
+  # Need `contents: write` to update the step in the README
+  contents: write
+
+jobs:
+  check_help_script:
+    name: Check help system demonstration script
+
+    # We will only run this action when:
+    # 1. This repository isn't the template repository
+    # 2. The help-system-demo.ps1 file exists  
+    # 3. We're currently on step 3
+    if: ${{ !github.event.repository.is_template && github.repository != 'sup3r7-fabio/pwsh-github-skills-tutorial' }}
+
+    # We'll run Ubuntu for performance
+    runs-on: ubuntu-latest
+
+    steps:
+      # We'll need to check out the repository so that we can read the files
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check if we're on the right step and script exists
+      - name: Check current step and files
+        id: check_step
+        run: |
+          echo "Checking current step and files..."
+          
+          # Check if we're on step 3
+          if grep -q '<details id=3>' README.md; then
+            echo "Currently on step 3, checking for help system script..."
+            echo "on_step_3=true" >> $GITHUB_OUTPUT
+            
+            # Check if the help script exists
+            if [ -f "help-system-demo.ps1" ]; then
+              echo "✅ Found help-system-demo.ps1"
+              echo "script_exists=true" >> $GITHUB_OUTPUT
+              
+              # Validate script content - check for help-related cmdlets
+              required_elements=("Get-Help" "Get-Command" "Parameters")
+              valid_count=0
+              
+              for element in "${required_elements[@]}"; do
+                if grep -qi "$element" "help-system-demo.ps1"; then
+                  echo "✅ Found $element in script"
+                  ((valid_count++))
+                else
+                  echo "❌ Missing $element in script"
+                fi
+              done
+              
+              # Also check for PowerShell Help System text
+              if grep -q "PowerShell Help System" "help-system-demo.ps1"; then
+                echo "✅ Found PowerShell Help System title"
+                ((valid_count++))
+              fi
+              
+              if [ $valid_count -ge 3 ]; then
+                echo "✅ Script contains sufficient help system examples ($valid_count/4)"
+                echo "script_valid=true" >> $GITHUB_OUTPUT
+              else
+                echo "❌ Script missing required help system elements (found $valid_count/4)"
+                echo "script_valid=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "❌ help-system-demo.ps1 not found"
+              echo "script_exists=false" >> $GITHUB_OUTPUT
+              echo "script_valid=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Not on step 3, no action needed"
+            echo "on_step_3=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Install PowerShell for testing
+      - name: Install PowerShell
+        if: >-
+          steps.check_step.outputs.on_step_3 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          # Install PowerShell on Ubuntu
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.3.9/powershell_7.3.9-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.3.9-1.deb_amd64.deb
+          sudo apt-get install -f
+
+      # Test the PowerShell script
+      - name: Test help system demonstration script
+        if: >-
+          steps.check_step.outputs.on_step_3 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          echo "Testing help system demonstration script..."
+          
+          # Test script syntax and basic execution
+          if timeout 45s pwsh -Command "& { . './help-system-demo.ps1' }" > script_output.txt 2>&1; then
+            echo "✅ Script executed successfully"
+            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+            
+            # Check if output contains expected elements
+            if grep -q "PowerShell Help System Demo" script_output.txt; then
+              echo "✅ Script produces expected output format"
+            else
+              echo "⚠️  Script output doesn't match expected format"
+            fi
+            
+            # Check for key help-related output
+            if grep -q "Get-Process" script_output.txt || grep -q "Parameters" script_output.txt; then
+              echo "✅ Script demonstrates help system concepts"
+            else
+              echo "⚠️  Script may not be demonstrating help concepts properly"
+            fi
+            
+            # Display first few lines of output for debugging
+            echo "Script output preview:"
+            head -15 script_output.txt
+            
+          else
+            echo "❌ Script failed to execute or timed out"
+            echo "SCRIPT_EXECUTION_VALID=false" >> $GITHUB_ENV
+            
+            # Show error output for debugging
+            echo "Error output:"
+            cat script_output.txt
+            exit 1
+          fi
+
+      # Move to step 4 if validation passes
+      - name: Update to step 4
+        if: >-
+          steps.check_step.outputs.on_step_3 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true' &&
+          env.SCRIPT_EXECUTION_VALID == 'true'
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 3
+          to_step: 4
+
+      # Provide feedback to learner
+      - name: Create feedback comment
+        if: >-
+          steps.check_step.outputs.on_step_3 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true' &&
+          env.SCRIPT_EXECUTION_VALID == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const feedbackMessage = `
+            🧠 **Brilliant work!** You've mastered PowerShell's help system!
+
+            ✅ **What you learned:**
+            - How to use \`Get-Help\` to learn about any cmdlet
+            - Using \`Get-Command\` to discover available cmdlets
+            - Understanding cmdlet parameters and syntax
+            - The power of tab completion for efficiency
+            - Finding commands with wildcards and patterns
+
+            💡 **Pro insight:** The help system is PowerShell's superpower! You now have the skills to learn any PowerShell cmdlet on your own.
+
+            🎯 **Ready for Step 4!** Next, you'll discover how PowerShell's object-oriented nature makes it incredibly powerful compared to traditional text-based shells.
+            `;
+            
+            try {
+              const commits = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commits.data[0].sha,
+                  body: feedbackMessage
+                });
+              }
+            } catch (error) {
+              console.log('Could not create commit comment, will skip');
+            }

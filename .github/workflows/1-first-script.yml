@@ -1,0 +1,160 @@
+name: Step 1, First PowerShell Script
+
+# This step triggers when the learner creates their first PowerShell script
+# This step validates the script and moves to step 2
+
+# Reference: https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows
+on:
+  # We'll run this workflow when:
+  # - Learner pushes changes to main branch
+  push:
+    branches:
+      - main
+    paths:
+      - 'my-first-script.ps1'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository
+  # Need `contents: write` to update the step in the README
+  contents: write
+
+jobs:
+  check_first_script:
+    name: Check first PowerShell script
+
+    # We will only run this action when:
+    # 1. This repository isn't the template repository  
+    # 2. The my-first-script.ps1 file exists
+    # 3. We're currently on step 1
+    if: ${{ !github.event.repository.is_template && github.repository != 'sup3r7-fabio/pwsh-github-skills-tutorial' }}
+
+    # We'll run Ubuntu for performance instead of Mac or Windows
+    runs-on: ubuntu-latest
+
+    steps:
+      # We'll need to check out the repository so that we can read the files
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check if we're on the right step and script exists
+      - name: Check current step and files
+        id: check_step
+        run: |
+          echo "Checking current step and files..."
+          
+          # Check if we're on step 1
+          if grep -q '<details id=1>' README.md; then
+            echo "Currently on step 1, checking for script file..."
+            echo "on_step_1=true" >> $GITHUB_OUTPUT
+            
+            # Check if the first script exists
+            if [ -f "my-first-script.ps1" ]; then
+              echo "✅ Found my-first-script.ps1"
+              echo "script_exists=true" >> $GITHUB_OUTPUT
+              
+              # Validate script content
+              if grep -q "Write-Host" "my-first-script.ps1" && grep -q "PSVersionTable" "my-first-script.ps1"; then
+                echo "✅ Script contains required PowerShell commands"
+                echo "script_valid=true" >> $GITHUB_OUTPUT
+              else
+                echo "❌ Script missing required commands (Write-Host and PSVersionTable)"
+                echo "script_valid=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "❌ my-first-script.ps1 not found"
+              echo "script_exists=false" >> $GITHUB_OUTPUT
+              echo "script_valid=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Not on step 1, no action needed"
+            echo "on_step_1=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Validate PowerShell syntax (if PowerShell is available)
+      - name: Install PowerShell
+        if: >-
+          steps.check_step.outputs.on_step_1 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          # Install PowerShell on Ubuntu
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.3.9/powershell_7.3.9-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.3.9-1.deb_amd64.deb
+          sudo apt-get install -f
+
+      # Test the PowerShell script
+      - name: Test PowerShell script
+        if: >-
+          steps.check_step.outputs.on_step_1 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          echo "Testing PowerShell script syntax..."
+          
+          # Test script syntax
+          if pwsh -Command "& { . './my-first-script.ps1' }" > /dev/null 2>&1; then
+            echo "✅ PowerShell script syntax is valid"
+            echo "SCRIPT_SYNTAX_VALID=true" >> $GITHUB_ENV
+          else
+            echo "❌ PowerShell script has syntax errors"
+            echo "SCRIPT_SYNTAX_VALID=false" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      # Move to step 2 if validation passes
+      - name: Update to step 2  
+        if: >-
+          steps.check_step.outputs.on_step_1 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true' &&
+          env.SCRIPT_SYNTAX_VALID == 'true'
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 1
+          to_step: 2
+
+      # Provide feedback to learner
+      - name: Create feedback comment
+        if: >-
+          steps.check_step.outputs.on_step_1 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true' &&
+          env.SCRIPT_SYNTAX_VALID == 'true'
+        uses: actions/github-script@v7  
+        with:
+          script: |
+            const feedbackMessage = `
+            🎉 **Excellent work!** Your first PowerShell script looks great!
+
+            ✅ **What you accomplished:**
+            - Created your first PowerShell script (\`my-first-script.ps1\`)
+            - Used PowerShell cmdlets like \`Write-Host\` and \`$PSVersionTable\`
+            - Learned about PowerShell's colorful output capabilities
+
+            🚀 **You're ready for Step 2!** 
+            
+            In the next step, you'll learn about PowerShell cmdlets and the Verb-Noun naming convention. Check out **Step 2** in your README below!
+            `;
+            
+            try {
+              const commits = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commits.data[0].sha,
+                  body: feedbackMessage
+                });
+              }
+            } catch (error) {
+              console.log('Could not create commit comment, will skip');
+            }

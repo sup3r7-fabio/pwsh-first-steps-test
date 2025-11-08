@@ -1,0 +1,74 @@
+name: Course Start - DevOps Automation
+
+# Welcome to the most advanced PowerShell course - Enterprise Automation & DevOps
+
+on:
+  push:
+    branches: [main]
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  start_course:
+    name: Course 4 - PowerShell Automation & DevOps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enterprise Course Welcome
+        shell: pwsh
+        run: |
+          Write-Host "🚀 Welcome to Course 4: PowerShell Automation & DevOps!" -ForegroundColor Magenta
+          Write-Host ""
+          Write-Host "🏢 This is ENTERPRISE-LEVEL PowerShell mastery:" -ForegroundColor Cyan
+          Write-Host "  🔧 Infrastructure as Code with PowerShell DSC" -ForegroundColor Green
+          Write-Host "  🔄 CI/CD Pipeline Development & Automation" -ForegroundColor Green
+          Write-Host "  📊 Production Monitoring & Site Reliability" -ForegroundColor Green
+          Write-Host "  🔐 Security & Compliance Automation" -ForegroundColor Green
+          Write-Host "  🏗️ Scalable Enterprise Deployment Patterns" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🎯 Career Impact: DevOps Engineer | SRE | Cloud Architect" -ForegroundColor Yellow
+          Write-Host ""
+          Write-Host "📋 Your mission begins:" -ForegroundColor White
+          Write-Host "   Create 'step1-infrastructure-code.ps1'" -ForegroundColor Yellow
+          Write-Host "   Build automation that powers enterprise infrastructure!" -ForegroundColor White
+          Write-Host ""
+          Write-Host "⚠️  Expert Level: This course requires advanced PowerShell knowledge" -ForegroundColor Red
+          Write-Host "🔥 Ready to automate the enterprise? Let's build something amazing!" -ForegroundColor Magenta
+
+      - name: Verify Enterprise Environment
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Verifying enterprise-ready environment..." -ForegroundColor Cyan
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)" -ForegroundColor Green
+          Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor Green
+          Write-Host "Edition: $($PSVersionTable.PSEdition)" -ForegroundColor Green
+          
+          # Check for advanced PowerShell features
+          if ($PSVersionTable.PSVersion.Major -ge 7) {
+            Write-Host "✅ PowerShell 7+ - Enterprise ready!" -ForegroundColor Green
+          }
+          
+          # Check available modules for enterprise scenarios
+          $enterpriseModules = @("Microsoft.PowerShell.Management", "Microsoft.PowerShell.Security")
+          foreach ($module in $enterpriseModules) {
+            if (Get-Module -ListAvailable -Name $module) {
+              Write-Host "✅ $module available" -ForegroundColor Green
+            }
+          }
+          
+          Write-Host "🚀 Environment validated - ready for enterprise automation!" -ForegroundColor Magenta
+
+      - name: Update to Step 1
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 0
+          to_step: 1

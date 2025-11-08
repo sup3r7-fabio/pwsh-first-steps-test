@@ -1,0 +1,69 @@
+name: Course Start
+
+# This workflow runs when someone starts Course 3
+# It provides initial setup and instructions
+
+on:
+  push:
+    branches: [main]
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  start_course:
+    name: Course 3 - PowerShell Functions & Modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Course Welcome
+        shell: pwsh
+        run: |
+          Write-Host "🎉 Welcome to Course 3: PowerShell Functions & Modules!" -ForegroundColor Magenta
+          Write-Host ""
+          Write-Host "📚 In this advanced course, you will learn:" -ForegroundColor Cyan
+          Write-Host "  • How to create robust PowerShell functions" -ForegroundColor Green
+          Write-Host "  • Parameter validation and advanced attributes" -ForegroundColor Green
+          Write-Host "  • Pipeline support and advanced function features" -ForegroundColor Green
+          Write-Host "  • How to build and distribute PowerShell modules" -ForegroundColor Green
+          Write-Host "  • Enterprise-grade best practices" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🚀 Ready to become a PowerShell expert?" -ForegroundColor Yellow
+          Write-Host ""
+          Write-Host "📋 Your first task:" -ForegroundColor White
+          Write-Host "   Create a file called 'step1-function-basics.ps1'" -ForegroundColor Yellow
+          Write-Host "   Include basic PowerShell functions demonstrating:" -ForegroundColor White
+          Write-Host "     - Function definition with proper naming" -ForegroundColor Gray
+          Write-Host "     - Parameter blocks" -ForegroundColor Gray
+          Write-Host "     - Return statements and output" -ForegroundColor Gray
+          Write-Host "     - Variable scope concepts" -ForegroundColor Gray
+          Write-Host ""
+          Write-Host "💡 Need help? Check the README.md for detailed instructions!" -ForegroundColor Cyan
+
+      - name: Verify PowerShell Version
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Checking PowerShell environment..." -ForegroundColor Cyan
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)" -ForegroundColor Green
+          Write-Host "Edition: $($PSVersionTable.PSEdition)" -ForegroundColor Green
+          Write-Host "Platform: $($PSVersionTable.Platform)" -ForegroundColor Green
+          
+          if ($PSVersionTable.PSVersion.Major -ge 7) {
+            Write-Host "✅ PowerShell 7+ detected - perfect for this course!" -ForegroundColor Green
+          } else {
+            Write-Host "⚠️  Consider upgrading to PowerShell 7+ for best experience" -ForegroundColor Yellow
+          }
+
+      - name: Update to Step 1
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 0
+          to_step: 1

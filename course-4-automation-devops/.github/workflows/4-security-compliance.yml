@@ -1,0 +1,70 @@
+name: Step 4, Security & Compliance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step4-security-compliance.ps1'
+      - '**/step4-security-compliance.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_security:
+    name: Validate Security & Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Security Script
+        shell: pwsh
+        run: |
+          $scriptPath = "step4-security-compliance.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-4-automation-devops/step4-security-compliance.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            Write-Host "✅ Found security script!" -ForegroundColor Green
+            $content = Get-Content $scriptPath -Raw
+            
+            # Check for security concepts
+            $concepts = @(
+              'PSCredential|SecureString',     # Credential management
+              'ConvertTo-SecureString',        # Security functions
+              'Audit|Compliance',             # Compliance automation
+              'Test.*Security|Scan',          # Security testing
+              'Certificate|Encryption'        # Security infrastructure
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { 
+                Write-Host "✅ Found security concept: $concept" -ForegroundColor Green
+                $found++ 
+              }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "🔐 Security & Compliance concepts validated!" -ForegroundColor Green
+              & $scriptPath
+            } else {
+              Write-Host "❌ Missing security concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Security script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Update to Step 5
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 4
+          to_step: 5

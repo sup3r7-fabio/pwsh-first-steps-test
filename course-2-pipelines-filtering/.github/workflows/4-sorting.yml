@@ -1,0 +1,110 @@
+name: Step 4, Sorting and Organizing Data
+
+# This workflow validates sorting, grouping, and data organization skills
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step4-sorting.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_sorting:
+    name: Validate Sorting and Organization
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Step 4 Script Exists
+        shell: pwsh
+        run: |
+          if (Test-Path "step4-sorting.ps1") {
+            Write-Host "✅ Found step4-sorting.ps1" -ForegroundColor Green
+            $content = Get-Content "step4-sorting.ps1" -Raw
+            
+            # Check for sorting and grouping concepts
+            $requiredConcepts = @{
+              'Sort-Object' = 'Data sorting'
+              '-Descending' = 'Reverse sorting'
+              'Group-Object' = 'Data grouping'
+              'Measure-Object' = 'Statistical analysis'
+              '-Sum|-Average|-Maximum' = 'Statistical operations'
+            }
+            
+            $conceptsFound = 0
+            foreach ($concept in $requiredConcepts.Keys) {
+              if ($content -match $concept) {
+                Write-Host "✅ Found: $($requiredConcepts[$concept])" -ForegroundColor Green
+                $conceptsFound++
+              } else {
+                Write-Host "⚠️  Missing: $($requiredConcepts[$concept])" -ForegroundColor Yellow
+              }
+            }
+            
+            if ($conceptsFound -ge 3) {
+              Write-Host "🎉 Good coverage of sorting concepts!" -ForegroundColor Cyan
+            } else {
+              Write-Host "⚠️  Consider adding more sorting examples." -ForegroundColor Yellow
+            }
+          } else {
+            Write-Host "❌ step4-sorting.ps1 not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Execute Step 4 Script
+        shell: pwsh
+        run: |
+          Write-Host "🔄 Testing your sorting script..." -ForegroundColor Cyan
+          try {
+            ./step4-sorting.ps1
+            Write-Host "✅ Script executed successfully!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ Script execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Sorting Skills Test
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing sorting and organization skills..." -ForegroundColor Cyan
+          
+          # Test basic sorting
+          $sortedProcesses = Get-Process | Sort-Object Name | Select-Object -First 5
+          $isSorted = $true
+          for ($i = 1; $i -lt $sortedProcesses.Count; $i++) {
+            if ($sortedProcesses[$i-1].Name -gt $sortedProcesses[$i].Name) {
+              $isSorted = $false
+              break
+            }
+          }
+          if ($isSorted) {
+            Write-Host "✅ Basic sorting works correctly" -ForegroundColor Green
+          }
+          
+          # Test grouping
+          $processGroups = Get-Process | Group-Object ProcessName
+          if ($processGroups.Count -ge 2) {
+            Write-Host "✅ Grouping works: $($processGroups.Count) groups created" -ForegroundColor Green
+          }
+          
+          # Test statistical analysis
+          $processStats = Get-Process | Measure-Object WorkingSet -Sum
+          if ($processStats.Sum -gt 0) {
+            Write-Host "✅ Statistical analysis works: Total memory $([math]::Round($processStats.Sum/1GB,2)) GB" -ForegroundColor Green
+          }
+          
+          Write-Host "🎯 Fantastic! You've mastered sorting and data organization." -ForegroundColor Magenta
+
+      - name: Update to Step 5
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 4
+          to_step: 5

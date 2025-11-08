@@ -1,0 +1,128 @@
+name: Step 1, Pipeline Basics
+
+# This workflow runs when the learner completes step 1
+# It validates understanding of pipeline basics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step1-pipeline-basics.ps1'
+      - '**step1-pipeline-basics.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_pipeline_basics:
+    name: Validate Pipeline Understanding
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Step 1 Script Exists
+        shell: pwsh
+        run: |
+          # Check multiple possible locations for the script
+          $scriptPaths = @(
+            "step1-pipeline-basics.ps1",
+            "./step1-pipeline-basics.ps1",
+            "course-2-pipelines-filtering/step1-pipeline-basics.ps1"
+          )
+          
+          $scriptFound = $false
+          $actualPath = ""
+          
+          foreach ($path in $scriptPaths) {
+            if (Test-Path $path) {
+              $scriptFound = $true
+              $actualPath = $path
+              break
+            }
+          }
+          
+          if ($scriptFound) {
+            Write-Host "✅ Found step1-pipeline-basics.ps1 at: $actualPath" -ForegroundColor Green
+            echo "SCRIPT_PATH=$actualPath" >> $env:GITHUB_ENV
+            
+            $content = Get-Content $actualPath -Raw
+            
+            # Check for required PowerShell commands
+            $requiredCommands = @(
+              'Get-Process',
+              'Get-Member', 
+              'Measure-Object',
+              'Select-Object',
+              'Format-Table'
+            )
+            
+            $allFound = $true
+            foreach ($cmd in $requiredCommands) {
+              if ($content -match $cmd) {
+                Write-Host "✅ Found $cmd command" -ForegroundColor Green
+              } else {
+                Write-Host "❌ Missing $cmd command" -ForegroundColor Red
+                $allFound = $false
+              }
+            }
+            
+            if ($allFound) {
+              Write-Host "🎉 All required commands found!" -ForegroundColor Cyan
+            } else {
+              Write-Host "⚠️  Some commands are missing. Please check the requirements." -ForegroundColor Yellow
+              exit 1
+            }
+          } else {
+            Write-Host "❌ step1-pipeline-basics.ps1 not found in any expected location!" -ForegroundColor Red
+            Write-Host "Expected locations:" -ForegroundColor Yellow
+            foreach ($path in $scriptPaths) {
+              Write-Host "  - $path" -ForegroundColor Yellow
+            }
+            exit 1
+          }
+
+      - name: Execute Step 1 Script
+        shell: pwsh
+        run: |
+          Write-Host "🔄 Testing your pipeline basics script..." -ForegroundColor Cyan
+          $scriptPath = $env:SCRIPT_PATH
+          if (-not $scriptPath) {
+            $scriptPath = "step1-pipeline-basics.ps1"
+          }
+          
+          try {
+            & $scriptPath
+            Write-Host "✅ Script executed successfully!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ Script execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Pipeline Concepts Check
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing pipeline concepts..." -ForegroundColor Cyan
+          
+          # Test object flow through pipeline
+          $processCount = Get-Process | Measure-Object
+          Write-Host "✅ Pipeline passes objects: $($processCount.Count) processes processed" -ForegroundColor Green
+          
+          # Test property access
+          $firstProcess = Get-Process | Select-Object -First 1
+          if ($firstProcess.Name -and $firstProcess.Id) {
+            Write-Host "✅ Object properties accessible through pipeline" -ForegroundColor Green
+          }
+          
+          Write-Host "🎯 Great job! You understand pipeline basics." -ForegroundColor Magenta
+
+      - name: Update to Step 2
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 1
+          to_step: 2

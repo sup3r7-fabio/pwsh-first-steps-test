@@ -1,0 +1,210 @@
+name: Step 4, Object Exploration
+
+# This step triggers when the learner creates the object exploration script
+# This step validates the script and moves to step 5
+
+# Reference: https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows  
+on:
+  # We'll run this workflow when:
+  # - Learner pushes changes to main branch with object exploration script
+  push:
+    branches:
+      - main
+    paths:
+      - 'object-exploration.ps1'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository
+  # Need `contents: write` to update the step in the README
+  contents: write
+
+jobs:
+  check_object_script:
+    name: Check object exploration script
+
+    # We will only run this action when:
+    # 1. This repository isn't the template repository
+    # 2. The object-exploration.ps1 file exists  
+    # 3. We're currently on step 4
+    if: ${{ !github.event.repository.is_template && github.repository != 'sup3r7-fabio/pwsh-github-skills-tutorial' }}
+
+    # We'll run Ubuntu for performance
+    runs-on: ubuntu-latest
+
+    steps:
+      # We'll need to check out the repository so that we can read the files
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check if we're on the right step and script exists
+      - name: Check current step and files
+        id: check_step
+        run: |
+          echo "Checking current step and files..."
+          
+          # Check if we're on step 4
+          if grep -q '<details id=4>' README.md; then
+            echo "Currently on step 4, checking for object exploration script..."
+            echo "on_step_4=true" >> $GITHUB_OUTPUT
+            
+            # Check if the object script exists
+            if [ -f "object-exploration.ps1" ]; then
+              echo "✅ Found object-exploration.ps1"
+              echo "script_exists=true" >> $GITHUB_OUTPUT
+              
+              # Validate script content - check for object-related concepts
+              required_elements=("Get-ChildItem" "Get-Date" "Get-Process" "Properties" "WorkingSet")
+              valid_count=0
+              
+              for element in "${required_elements[@]}"; do
+                if grep -qi "$element" "object-exploration.ps1"; then
+                  echo "✅ Found $element in script"
+                  ((valid_count++))
+                else
+                  echo "❌ Missing $element in script"
+                fi
+              done
+              
+              # Also check for PowerShell Objects text
+              if grep -q "PowerShell Objects" "object-exploration.ps1"; then
+                echo "✅ Found PowerShell Objects title"
+                ((valid_count++))
+              fi
+              
+              # Check for property access patterns like $obj.Property
+              if grep -q '\$.*\.' "object-exploration.ps1"; then
+                echo "✅ Found property access patterns"
+                ((valid_count++))
+              fi
+              
+              if [ $valid_count -ge 5 ]; then
+                echo "✅ Script contains sufficient object examples ($valid_count/7)"
+                echo "script_valid=true" >> $GITHUB_OUTPUT
+              else
+                echo "❌ Script missing required object elements (found $valid_count/7)"
+                echo "script_valid=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "❌ object-exploration.ps1 not found"
+              echo "script_exists=false" >> $GITHUB_OUTPUT
+              echo "script_valid=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Not on step 4, no action needed"
+            echo "on_step_4=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Install PowerShell for testing
+      - name: Install PowerShell
+        if: >-
+          steps.check_step.outputs.on_step_4 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          # Install PowerShell on Ubuntu
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.3.9/powershell_7.3.9-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.3.9-1.deb_amd64.deb
+          sudo apt-get install -f
+
+      # Test the PowerShell script
+      - name: Test object exploration script
+        if: >-
+          steps.check_step.outputs.on_step_4 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          echo "Testing object exploration script..."
+          
+          # Test script syntax and basic execution
+          if timeout 60s pwsh -Command "& { . './object-exploration.ps1' }" > script_output.txt 2>&1; then
+            echo "✅ Script executed successfully"
+            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+            
+            # Check if output contains expected elements
+            if grep -q "PowerShell Objects Exploration" script_output.txt; then
+              echo "✅ Script produces expected output format"
+            else
+              echo "⚠️  Script output doesn't match expected format"
+            fi
+            
+            # Check for object manipulation evidence
+            if grep -q "File:" script_output.txt || grep -q "Process:" script_output.txt; then
+              echo "✅ Script demonstrates object manipulation"
+            else
+              echo "⚠️  Script may not be demonstrating objects properly"
+            fi
+            
+            # Display first few lines of output for debugging
+            echo "Script output preview:"
+            head -20 script_output.txt
+            
+          else
+            echo "❌ Script failed to execute or timed out"
+            echo "SCRIPT_EXECUTION_VALID=false" >> $GITHUB_ENV
+            
+            # Show error output for debugging
+            echo "Error output:"
+            cat script_output.txt
+            exit 1
+          fi
+
+      # Move to step 5 if validation passes
+      - name: Update to step 5
+        if: >-
+          steps.check_step.outputs.on_step_4 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true' &&
+          env.SCRIPT_EXECUTION_VALID == 'true'
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 4
+          to_step: 5
+
+      # Provide feedback to learner
+      - name: Create feedback comment
+        if: >-
+          steps.check_step.outputs.on_step_4 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true' &&
+          env.SCRIPT_EXECUTION_VALID == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const feedbackMessage = `
+            🎯 **Exceptional work!** You've grasped PowerShell's object-oriented power!
+
+            ✅ **What you mastered:**
+            - Understanding that PowerShell works with rich .NET objects, not text
+            - Accessing object properties with dot notation (\`$obj.Property\`)
+            - Working with file objects and their metadata
+            - Manipulating date objects and their methods  
+            - Exploring process objects and memory information
+            - Using \`Get-Member\` to discover object capabilities
+
+            🚀 **Key insight:** This is PowerShell's superpower! While other shells work with text, you're working with structured data that's much more powerful and precise.
+
+            🏁 **Ready for the final step!** Time to put it all together and build a comprehensive automation script that demonstrates everything you've learned!
+            `;
+            
+            try {
+              const commits = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commits.data[0].sha,
+                  body: feedbackMessage
+                });
+              }
+            } catch (error) {
+              console.log('Could not create commit comment, will skip');
+            }

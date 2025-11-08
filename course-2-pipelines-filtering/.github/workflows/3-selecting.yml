@@ -1,0 +1,122 @@
+name: Step 3, Selecting and Transforming Data
+
+# This workflow validates Select-Object and data transformation skills
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step3-selecting.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_selecting:
+    name: Validate Data Selection and Transformation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Step 3 Script Exists
+        shell: pwsh
+        run: |
+          if (Test-Path "step3-selecting.ps1") {
+            Write-Host "✅ Found step3-selecting.ps1" -ForegroundColor Green
+            $content = Get-Content "step3-selecting.ps1" -Raw
+            
+            # Check for selection and transformation concepts
+            $requiredConcepts = @{
+              'Select-Object' = 'Property selection'
+              '@\{.*Name.*=.*Expression.*=.*\}' = 'Calculated properties'
+              '(-First|-Last|-Skip)' = 'Data slicing'
+              '-Unique' = 'Duplicate removal'
+              '-ExpandProperty' = 'Property expansion'
+            }
+            
+            $conceptsFound = 0
+            foreach ($concept in $requiredConcepts.Keys) {
+              if ($content -match $concept) {
+                Write-Host "✅ Found: $($requiredConcepts[$concept])" -ForegroundColor Green
+                $conceptsFound++
+              } else {
+                Write-Host "⚠️  Missing: $($requiredConcepts[$concept])" -ForegroundColor Yellow
+              }
+            }
+            
+            if ($conceptsFound -ge 3) {
+              Write-Host "🎉 Good coverage of selection concepts!" -ForegroundColor Cyan
+            } else {
+              Write-Host "⚠️  Consider adding more selection examples. Found $conceptsFound of 5 concepts." -ForegroundColor Yellow
+            }
+          } else {
+            Write-Host "❌ step3-selecting.ps1 not found!" -ForegroundColor Red
+            Write-Host "Please create the step3-selecting.ps1 file to continue." -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Execute Step 3 Script
+        shell: pwsh
+        run: |
+          Write-Host "🔄 Testing your selection script..." -ForegroundColor Cyan
+          if (-not (Test-Path "step3-selecting.ps1")) {
+            Write-Host "❌ Script file not found!" -ForegroundColor Red
+            exit 1
+          }
+          
+          try {
+            & ./step3-selecting.ps1
+            Write-Host "✅ Script executed successfully!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ Script execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Error details: $($_.ScriptStackTrace)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Selection Skills Test
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing selection and transformation skills..." -ForegroundColor Cyan
+          
+          try {
+            # Test basic property selection
+            $processProps = Get-Process | Select-Object Name, Id -First 1
+            if ($processProps -and $processProps.Name -and $null -ne $processProps.Id) {
+              Write-Host "✅ Basic property selection works" -ForegroundColor Green
+            } else {
+              Write-Host "⚠️  Basic property selection test inconclusive" -ForegroundColor Yellow
+            }
+            
+            # Test calculated properties
+            $processWithCalc = Get-Process | Select-Object Name, 
+              @{Name='MemoryMB';Expression={[math]::Round($_.WorkingSet/1MB,2)}} -First 1
+            if ($processWithCalc -and $processWithCalc.MemoryMB -is [double]) {
+              Write-Host "✅ Calculated properties work correctly" -ForegroundColor Green
+            } else {
+              Write-Host "⚠️  Calculated properties test inconclusive" -ForegroundColor Yellow
+            }
+            
+            # Test data slicing
+            $firstFive = Get-Process | Select-Object Name -First 5
+            if ($firstFive -and $firstFive.Count -eq 5) {
+              Write-Host "✅ Data slicing with -First works" -ForegroundColor Green
+            } else {
+              Write-Host "⚠️  Data slicing test inconclusive (got $($firstFive.Count) items)" -ForegroundColor Yellow
+            }
+            
+            Write-Host "🎯 Outstanding! You've mastered data selection and transformation." -ForegroundColor Magenta
+          } catch {
+            Write-Host "❌ Skills test failed: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Update to Step 4
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 3
+          to_step: 4

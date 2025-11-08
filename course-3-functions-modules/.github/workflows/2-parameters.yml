@@ -1,0 +1,66 @@
+name: Step 2, Parameters & Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step2-parameters.ps1'
+      - '**/step2-parameters.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_parameters:
+    name: Validate Parameter Concepts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Script and Concepts
+        shell: pwsh
+        run: |
+          $scriptPath = "step2-parameters.ps1"
+          if (-not (Test-Path $scriptPath)) {
+            $scriptPath = "course-3-functions-modules/step2-parameters.ps1"
+          }
+          
+          if (Test-Path $scriptPath) {
+            $content = Get-Content $scriptPath -Raw
+            Write-Host "✅ Found $scriptPath" -ForegroundColor Green
+            
+            # Check for parameter concepts
+            $concepts = @(
+              '\[Parameter\(.*Mandatory.*\)\]',
+              '\[ValidateSet\(',
+              '\[string\]|\[int\]|\[switch\]',
+              'param\s*\('
+            )
+            
+            $found = 0
+            foreach ($concept in $concepts) {
+              if ($content -match $concept) { $found++ }
+            }
+            
+            if ($found -ge 2) {
+              Write-Host "✅ Parameter concepts found!" -ForegroundColor Green
+              & $scriptPath
+            } else {
+              Write-Host "❌ Missing parameter concepts" -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ Script not found!" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Update to Step 3
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 2
+          to_step: 3

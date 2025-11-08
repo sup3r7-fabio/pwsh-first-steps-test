@@ -1,0 +1,41 @@
+# PowerShell
+*.ps1xml
+$PROFILE.*
+
+# Logs
+*.log
+*.txt
+
+# Temp files
+*~
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+
+# Output directories
+output/
+results/
+temp/
+
+# User-specific files
+user-scripts/
+my-*.ps1
+
+# Course completion files (auto-generated)
+COURSE-*-COMPLETION.md

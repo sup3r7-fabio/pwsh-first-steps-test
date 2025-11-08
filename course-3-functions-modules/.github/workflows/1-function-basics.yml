@@ -1,0 +1,169 @@
+name: Step 1, Function Fundamentals
+
+# This workflow validates understanding of PowerShell function basics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'step1-function-basics.ps1'
+      - '**/step1-function-basics.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate_function_basics:
+    name: Validate Function Fundamentals
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Step 1 Script Exists
+        shell: pwsh
+        run: |
+          # Check multiple possible locations for the script
+          $scriptPaths = @(
+            "step1-function-basics.ps1",
+            "./step1-function-basics.ps1",
+            "course-3-functions-modules/step1-function-basics.ps1"
+          )
+          
+          $scriptFound = $false
+          $actualPath = ""
+          
+          foreach ($path in $scriptPaths) {
+            if (Test-Path $path) {
+              $scriptFound = $true
+              $actualPath = $path
+              break
+            }
+          }
+          
+          if ($scriptFound) {
+            Write-Host "✅ Found step1-function-basics.ps1 at: $actualPath" -ForegroundColor Green
+            echo "SCRIPT_PATH=$actualPath" >> $env:GITHUB_ENV
+            
+            $content = Get-Content $actualPath -Raw
+            
+            # Check for required function concepts
+            $requiredConcepts = @(
+              'function\s+\w+-\w+',  # Proper function naming convention
+              'param\s*\(',          # Parameter block
+              'return\s+',           # Return statement
+              'Write-Output\s+',     # Output command
+              '\$\w+\s*='           # Variable assignment
+            )
+            
+            $conceptsFound = 0
+            foreach ($concept in $requiredConcepts) {
+              if ($content -match $concept) {
+                Write-Host "✅ Found function concept: $concept" -ForegroundColor Green
+                $conceptsFound++
+              } else {
+                Write-Host "⚠️  Missing concept: $concept" -ForegroundColor Yellow
+              }
+            }
+            
+            if ($conceptsFound -ge 3) {
+              Write-Host "🎉 Good coverage of function fundamentals!" -ForegroundColor Cyan
+            } else {
+              Write-Host "❌ Please add more function concepts." -ForegroundColor Red
+              exit 1
+            }
+          } else {
+            Write-Host "❌ step1-function-basics.ps1 not found in any expected location!" -ForegroundColor Red
+            Write-Host "Expected locations:" -ForegroundColor Yellow
+            foreach ($path in $scriptPaths) {
+              Write-Host "  - $path" -ForegroundColor Yellow
+            }
+            exit 1
+          }
+
+      - name: Validate PowerShell Syntax
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Validating PowerShell syntax..." -ForegroundColor Cyan
+          $scriptPath = $env:SCRIPT_PATH
+          if (-not $scriptPath) {
+            $scriptPath = "step1-function-basics.ps1"
+          }
+          
+          try {
+            $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $scriptPath -Raw), [ref]$null)
+            Write-Host "✅ PowerShell syntax is valid!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ PowerShell syntax error: $($_.Exception.Message)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Execute Step 1 Script
+        shell: pwsh
+        run: |
+          Write-Host "🔄 Testing your function basics script..." -ForegroundColor Cyan
+          $scriptPath = $env:SCRIPT_PATH
+          if (-not $scriptPath) {
+            $scriptPath = "step1-function-basics.ps1"
+          }
+          
+          try {
+            & $scriptPath
+            Write-Host "✅ Script executed successfully!" -ForegroundColor Green
+          } catch {
+            Write-Host "❌ Script execution failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Function Concepts Test
+        shell: pwsh
+        run: |
+          Write-Host "🧪 Testing function concepts..." -ForegroundColor Cyan
+          
+          # Test basic function definition
+          function Test-BasicFunction {
+            param([string]$Name = "World")
+            return "Hello, $Name!"
+          }
+          
+          $result = Test-BasicFunction -Name "PowerShell"
+          if ($result -eq "Hello, PowerShell!") {
+            Write-Host "✅ Basic function definition works" -ForegroundColor Green
+          }
+          
+          # Test function scope
+          $global:testVar = "Global"
+          function Test-Scope {
+            $local:testVar = "Local"
+            return $testVar
+          }
+          
+          $localResult = Test-Scope
+          if ($localResult -eq "Local" -and $global:testVar -eq "Global") {
+            Write-Host "✅ Function scope isolation works" -ForegroundColor Green
+          }
+          
+          # Test return vs Write-Output
+          function Test-Output {
+            Write-Output "Output1"
+            return "Return1"
+            Write-Output "Output2"  # This won't execute
+          }
+          
+          $output = Test-Output
+          if ($output -contains "Output1" -and $output -contains "Return1") {
+            Write-Host "✅ Understanding of output methods confirmed" -ForegroundColor Green
+          }
+          
+          Write-Host "🎯 Great! You understand function fundamentals." -ForegroundColor Magenta
+
+      - name: Update to Step 2
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 1
+          to_step: 2

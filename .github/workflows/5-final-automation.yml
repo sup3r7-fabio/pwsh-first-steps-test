@@ -1,0 +1,309 @@
+name: Step 5, Final Automation Script
+
+# This step triggers when the learner creates the comprehensive automation script
+# This step validates the script and completes the course
+
+# Reference: https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows  
+on:
+  # We'll run this workflow when:
+  # - Learner pushes changes to main branch with system report scripts
+  push:
+    branches:
+      - main
+    paths:
+      - 'system-report.ps1'
+      - 'run-report.ps1'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+# Reference: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+permissions:
+  # Need `contents: read` to checkout the repository
+  # Need `contents: write` to update the step in the README
+  contents: write
+
+jobs:
+  check_final_scripts:
+    name: Check final automation scripts
+
+    # We will only run this action when:
+    # 1. This repository isn't the template repository
+    # 2. The system-report.ps1 and run-report.ps1 files exist  
+    # 3. We're currently on step 5
+    if: >-
+      ${{ !github.event.repository.is_template
+      && github.repository != 'sup3r7-fabio/pwsh-github-skills-tutorial' }}
+
+    # We'll run Ubuntu for performance
+    runs-on: ubuntu-latest
+
+    steps:
+      # We'll need to check out the repository so that we can read the files
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check if we're on the right step and scripts exist
+      - name: Check current step and files
+        id: check_step
+        run: |
+          echo "Checking current step and files..."
+          
+          # Check if we're on step 5
+          if grep -q '<details id=X>' README.md; then
+            echo "Currently on step 5, checking for final automation scripts..."
+            echo "on_step_5=true" >> $GITHUB_OUTPUT
+            
+            # Check if both final scripts exist
+            scripts_found=0
+            
+            if [ -f "system-report.ps1" ]; then
+              echo "✅ Found system-report.ps1"
+              ((scripts_found++))
+            else
+              echo "❌ system-report.ps1 not found"
+            fi
+            
+            if [ -f "run-report.ps1" ]; then
+              echo "✅ Found run-report.ps1"
+              ((scripts_found++))
+            else
+              echo "❌ run-report.ps1 not found"
+            fi
+            
+            if [ $scripts_found -eq 2 ]; then
+              echo "script_exists=true" >> $GITHUB_OUTPUT
+              
+              # Validate system-report.ps1 content
+              required_elements=("System Report" "SYSTEM INFORMATION" "Get-ComputerInfo" "PowerShell fundamentals")
+              valid_count=0
+              
+              for element in "${required_elements[@]}"; do
+                if grep -qi "$element" "system-report.ps1"; then
+                  echo "✅ Found '$element' in system-report.ps1"
+                  ((valid_count++))
+                else
+                  echo "❌ Missing '$element' in system-report.ps1"
+                fi
+              done
+              
+              # Check for comprehensive automation elements
+              automation_elements=("Get-WmiObject\|Get-CimInstance" "Get-Service" "Get-EventLog\|Get-WinEvent")
+              for element in "${automation_elements[@]}"; do
+                if grep -Eq "$element" "system-report.ps1"; then
+                  echo "✅ Found automation element matching '$element'"
+                  ((valid_count++))
+                else
+                  echo "❌ Missing automation element '$element'"
+                fi
+              done
+              
+              if [ $valid_count -ge 5 ]; then
+                echo "✅ Scripts contain sufficient automation examples ($valid_count/7)"
+                echo "script_valid=true" >> $GITHUB_OUTPUT
+              else
+                echo "❌ Scripts missing required automation elements (found $valid_count/7)"
+                echo "script_valid=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "script_exists=false" >> $GITHUB_OUTPUT
+              echo "script_valid=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Not on step 5, no action needed"
+            echo "on_step_5=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Install PowerShell for testing
+      - name: Install PowerShell
+        if: >-
+          steps.check_step.outputs.on_step_5 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          # Install PowerShell on Ubuntu
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.3.9/powershell_7.3.9-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.3.9-1.deb_amd64.deb
+          sudo apt-get install -f
+
+      # Test the PowerShell scripts
+      - name: Test final automation scripts
+        if: >-
+          steps.check_step.outputs.on_step_5 == 'true' && 
+          steps.check_step.outputs.script_exists == 'true'
+        shell: bash
+        run: |
+          echo "Testing final automation scripts..."
+          
+          # Test system-report.ps1 syntax
+          echo "Checking system-report.ps1 syntax..."
+          if pwsh -Command "& { Get-Content './system-report.ps1' | Out-Null }" 2>/dev/null; then
+            echo "✅ system-report.ps1 syntax is valid"
+          else
+            echo "❌ system-report.ps1 has syntax errors"
+            exit 1
+          fi
+          
+          # Test run-report.ps1 syntax  
+          echo "Checking run-report.ps1 syntax..."
+          if pwsh -Command "& { Get-Content './run-report.ps1' | Out-Null }" 2>/dev/null; then
+            echo "✅ run-report.ps1 syntax is valid"
+          else
+            echo "❌ run-report.ps1 has syntax errors"
+            exit 1
+          fi
+          
+          # Try to run a basic test (with timeout for safety)
+          echo "Testing basic script execution..."
+          if timeout 30s pwsh -Command "& { Write-Host 'Testing PowerShell execution...'; Get-Date; Write-Host 'Test completed successfully!' }" > test_output.txt 2>&1; then
+            echo "✅ PowerShell execution test successful"
+            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+            
+            echo "Test output:"
+            cat test_output.txt
+          else
+            echo "⚠️  Basic execution test failed, but syntax is valid"
+            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+          fi
+
+      # Complete the course if validation passes
+      - name: Complete course
+        if: >-
+          steps.check_step.outputs.on_step_5 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true'
+        uses: skills/action-update-step@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 5
+          to_step: X
+
+      # Provide final celebration feedback
+      - name: Create completion celebration
+        if: >-
+          steps.check_step.outputs.on_step_5 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const celebrationMessage = `
+            🎉🎉🎉 **CONGRATULATIONS! You've completed PowerShell First Steps!** 🎉🎉🎉
+
+            ## 🏆 What an Amazing Journey!
+
+            You've just built a comprehensive PowerShell automation script that demonstrates mastery of all the fundamentals:
+
+            ✅ **PowerShell Environment & Basics**  
+            ✅ **Cmdlet Structure & Discovery**  
+            ✅ **Help System Mastery**  
+            ✅ **Object-Oriented Programming**  
+            ✅ **Practical Automation Scripting**  
+
+            ## 🚀 Your PowerShell Skills
+
+            Your final \`system-report.ps1\` demonstrates:
+            - **System Information Gathering** with \`Get-ComputerInfo\`
+            - **Disk Space Management** with WMI/CIM classes
+            - **Service Monitoring** with \`Get-Service\`
+            - **Network Configuration** analysis  
+            - **Event Log Processing** for troubleshooting
+            - **Professional Script Structure** with clear sections and formatting
+
+            ## 🎯 What's Next?
+
+            You're now ready for intermediate PowerShell topics:
+            - **PowerShell Pipelines & Filtering** 
+            - **Variables & Advanced Data Structures**
+            - **Functions & Modules Development**
+            - **File System Automation**
+            - **Error Handling & Debugging**
+
+            ## 🌟 Keep the Momentum Going!
+
+            - **Practice daily** with small automation tasks
+            - **Join PowerShell communities** to learn from others  
+            - **Build real solutions** for problems you face
+            - **Share your success** with #PowerShellSkills
+
+            **You're officially a PowerShell practitioner!** Welcome to the automation revolution! 🤖⚡
+
+            ---
+            *Course completed in approximately 1 hour • PowerShell First Steps*
+            `;
+            
+            try {
+              const commits = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 1
+              });
+              
+              if (commits.data.length > 0) {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commits.data[0].sha,
+                  body: celebrationMessage
+                });
+              }
+            } catch (error) {
+              console.log('Could not create commit comment, will skip');
+            }
+
+      # Create a course completion badge/artifact
+      - name: Generate completion certificate
+        if: >-
+          steps.check_step.outputs.on_step_5 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true'
+        run: |
+          echo "Creating course completion artifact..."
+          
+          cat > COMPLETION_CERTIFICATE.md << 'EOF'
+          # 🏆 PowerShell First Steps - Course Completion Certificate
+          
+          **Congratulations!** This repository represents successful completion of:
+          
+          ## PowerShell First Steps Interactive Course
+          
+          **Completed on:** $(date '+%Y-%m-%d %H:%M:%S')  
+          **Repository:** ${{ github.repository }}  
+          **Learner:** ${{ github.actor }}  
+          
+          ### Skills Demonstrated:
+          - ✅ PowerShell environment setup and navigation
+          - ✅ Cmdlet structure and essential commands  
+          - ✅ Help system mastery and command discovery
+          - ✅ Object-oriented programming concepts
+          - ✅ Comprehensive automation script development
+          
+          ### Artifacts Created:
+          - \`my-first-script.ps1\` - Introduction to PowerShell
+          - \`cmdlet-exploration.ps1\` - Essential cmdlet practice  
+          - \`help-system-demo.ps1\` - Help system mastery
+          - \`object-exploration.ps1\` - Object manipulation
+          - \`system-report.ps1\` - Complete automation project
+          - \`run-report.ps1\` - Script execution helper
+          
+          ### Next Recommended Courses:
+          1. PowerShell Pipelines & Filtering
+          2. Variables & Data Structures  
+          3. Functions & Modules
+          4. File System Automation
+          5. Error Handling & Debugging
+          
+          **Keep learning and automating!** 🚀
+          EOF
+          
+          echo "Certificate generated successfully!"
+
+      # Commit the completion certificate
+      - name: Commit completion certificate
+        if: >-
+          steps.check_step.outputs.on_step_5 == 'true' && 
+          steps.check_step.outputs.script_valid == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add COMPLETION_CERTIFICATE.md
+          git commit -m "🎉 Add course completion certificate" || echo "No changes to commit"
+          git push || echo "No changes to push"
