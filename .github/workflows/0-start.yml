@@ -60,10 +60,10 @@ jobs:
       - name: Update to step 1
         if: steps.check_step.outputs.setup_needed == 'true'
         uses: skills/action-update-step@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FROM_STEP: 0
-          TO_STEP: 1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          from_step: 0
+          to_step: 1
 
       # Welcome the learner to the course
       - name: Create welcome comment
