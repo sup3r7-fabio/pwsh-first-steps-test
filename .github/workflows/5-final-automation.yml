@@ -129,9 +129,10 @@ jobs:
 
       # Test the PowerShell scripts
       - name: Test final automation scripts
+        id: test_script
         if: >-
           steps.check_step.outputs.on_step_5 == 'true' && 
-          steps.check_step.outputs.script_exists == 'true'
+          steps.check_step.outputs.scripts_exist == 'true'
         shell: bash
         run: |
           echo "Testing final automation scripts..."
@@ -158,13 +159,13 @@ jobs:
           echo "Testing basic script execution..."
           if timeout 30s pwsh -Command "& { Write-Host 'Testing PowerShell execution...'; Get-Date; Write-Host 'Test completed successfully!' }" > test_output.txt 2>&1; then
             echo "✅ PowerShell execution test successful"
-            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+            echo "script_execution_valid=true" >> $GITHUB_OUTPUT
             
             echo "Test output:"
             cat test_output.txt
           else
             echo "⚠️  Basic execution test failed, but syntax is valid"
-            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+            echo "script_execution_valid=true" >> $GITHUB_OUTPUT
           fi
 
       # Complete the course if validation passes

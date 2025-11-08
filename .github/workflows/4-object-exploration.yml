@@ -113,6 +113,7 @@ jobs:
 
       # Test the PowerShell script
       - name: Test object exploration script
+        id: test_script
         if: >-
           steps.check_step.outputs.on_step_4 == 'true' && 
           steps.check_step.outputs.script_exists == 'true'
@@ -123,7 +124,7 @@ jobs:
           # Test script syntax and basic execution
           if timeout 60s pwsh -Command "& { . './object-exploration.ps1' }" > script_output.txt 2>&1; then
             echo "✅ Script executed successfully"
-            echo "SCRIPT_EXECUTION_VALID=true" >> $GITHUB_ENV
+            echo "script_execution_valid=true" >> $GITHUB_OUTPUT
             
             # Check if output contains expected elements
             if grep -q "PowerShell Objects Exploration" script_output.txt; then
@@ -145,7 +146,7 @@ jobs:
             
           else
             echo "❌ Script failed to execute or timed out"
-            echo "SCRIPT_EXECUTION_VALID=false" >> $GITHUB_ENV
+            echo "script_execution_valid=false" >> $GITHUB_OUTPUT
             
             # Show error output for debugging
             echo "Error output:"
@@ -158,7 +159,7 @@ jobs:
         if: >-
           steps.check_step.outputs.on_step_4 == 'true' && 
           steps.check_step.outputs.script_valid == 'true' &&
-          env.SCRIPT_EXECUTION_VALID == 'true'
+          steps.test_script.outputs.script_execution_valid == 'true'
         uses: skills/action-update-step@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -170,7 +171,7 @@ jobs:
         if: >-
           steps.check_step.outputs.on_step_4 == 'true' && 
           steps.check_step.outputs.script_valid == 'true' &&
-          env.SCRIPT_EXECUTION_VALID == 'true'
+          steps.test_script.outputs.script_execution_valid == 'true'
         uses: actions/github-script@v7
         with:
           script: |

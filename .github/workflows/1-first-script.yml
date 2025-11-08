@@ -89,6 +89,7 @@ jobs:
 
       # Test the PowerShell script
       - name: Test PowerShell script
+        id: test_script
         if: >-
           steps.check_step.outputs.on_step_1 == 'true' && 
           steps.check_step.outputs.script_exists == 'true'
@@ -99,10 +100,10 @@ jobs:
           # Test script syntax
           if pwsh -Command "& { . './my-first-script.ps1' }" > /dev/null 2>&1; then
             echo "✅ PowerShell script syntax is valid"
-            echo "SCRIPT_SYNTAX_VALID=true" >> $GITHUB_ENV
+            echo "script_syntax_valid=true" >> $GITHUB_OUTPUT
           else
             echo "❌ PowerShell script has syntax errors"
-            echo "SCRIPT_SYNTAX_VALID=false" >> $GITHUB_ENV
+            echo "script_syntax_valid=false" >> $GITHUB_OUTPUT
             exit 1
           fi
 
@@ -111,7 +112,7 @@ jobs:
         if: >-
           steps.check_step.outputs.on_step_1 == 'true' && 
           steps.check_step.outputs.script_valid == 'true' &&
-          env.SCRIPT_SYNTAX_VALID == 'true'
+          steps.test_script.outputs.script_syntax_valid == 'true'
         uses: skills/action-update-step@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -123,7 +124,7 @@ jobs:
         if: >-
           steps.check_step.outputs.on_step_1 == 'true' && 
           steps.check_step.outputs.script_valid == 'true' &&
-          env.SCRIPT_SYNTAX_VALID == 'true'
+          steps.test_script.outputs.script_syntax_valid == 'true'
         uses: actions/github-script@v7  
         with:
           script: |
